@@ -1,0 +1,3 @@
+Writing using first file descriptor 3
+Writing using second file descriptor 4
+

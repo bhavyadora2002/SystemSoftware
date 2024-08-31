@@ -1,0 +1,2 @@
+Hello..We are using this file to copy its contents to other file
+This is used for 7.c

@@ -13,7 +13,8 @@ Date: 29th Aug, 2024.
 #include<stdlib.h>
 int main(){
 	int errno;
-	errno = symlink(path1,"SymLink");
+	const char *path = "/home/bhavya/Desktop/List_1/link.txt";
+	errno = symlink(path,"SymLink");
 	perror("symlink");
 	printf("%d\n",errno);
 	if(errno == 0)

@@ -1,6 +1,6 @@
 /*
 ============================================================================
-Name : 26a.c
+Name : 9.c
 Author : Dora Bhavya Rishitha
 Description :9. Write a program to print the following information about a given file.
 a. inode

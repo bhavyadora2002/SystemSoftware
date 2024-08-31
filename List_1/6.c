@@ -1,6 +1,6 @@
 /*
 ============================================================================
-Name : 26a.c
+Name : 6.c
 Author : Dora Bhavya Rishitha
 Description :6. Write a program to take input from STDIN and display on STDOUT. Use only read/write system calls
 Date: 29th Aug, 2024.

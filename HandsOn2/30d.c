@@ -1,6 +1,6 @@
 /*
 ============================================================================
-Name : 30b.c
+Name : 30d.c
 Author : Dora Bhavya Rishitha
 Description :30. Write a program to create a shared memory.
 d. remove the shared memory
@@ -35,9 +35,13 @@ int main(){
     }
     printf("Enter to delete shared Memory\n");
     getchar();
-    shmctl(id,IPC_RMID,NULL);   
-    printf("Trying to access shared memory after deleting\n");
-    printf("%s",str);
+    if(shmctl(id,IPC_RMID,NULL) == -1){
+        perror("Cannot delete shared memory");
+        exit(0);
+    }   
+    else{
+        printf("Shared Memory marked for deletion\n");
+    }
     return 0;
 }
 /*
@@ -48,7 +52,6 @@ bhavya@bhavya-HP-Envy-x360-2-in-1-Laptop-14-fc0xxx:~/Desktop/SystemSoftware/Hand
 Key generated is 17108538
 Enter to delete shared Memory
 
-Trying to access shared memory after detaching
-SharedMemory
+Shared Memory marked for deletion
 ============================================================================
 */

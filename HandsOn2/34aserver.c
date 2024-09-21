@@ -74,8 +74,7 @@ void main()
 }
 /*
 OUTPUT:
-bhavya@bhavya-HP-Envy-x360-2-in-1-Laptop-14-fc0xxx:~/Desktop/SystemSoftware/HandsOn2$ gcc 34bclient.c -o 34bclient.out
-bhavya@bhavya-HP-Envy-x360-2-in-1-Laptop-14-fc0xxx:~/Desktop/SystemSoftware/HandsOn2$ ./34bclient.out
-Connection established from client
-Message from server : Server Message
+bhavya@bhavya-HP-Envy-x360-2-in-1-Laptop-14-fc0xxx:~/Desktop/SystemSoftware/HandsOn2$ gcc 34aserver.c -o 34aserver.out
+bhavya@bhavya-HP-Envy-x360-2-in-1-Laptop-14-fc0xxx:~/Desktop/SystemSoftware/HandsOn2$ ./34aserver.out
+Message from Client : Client Message
 */

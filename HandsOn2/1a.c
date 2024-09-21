@@ -34,16 +34,15 @@ int main()
     signal(SIGALRM, handler);
 
 
-    setitimer(ITIMER_REAL, &t,NULL);
-    perror("setitimer");
+    if(setitimer(ITIMER_REAL,&t,0) == -1)
+    perror("Error while setting timer");
     while(1);
 }
 /*
 OUTPUT:
 ============================================================================
-bhavya@bhavya-HP-Envy-x360-2-in-1-Laptop-14-fc0xxx:~/Desktop/SystemSoftware/HandsOn2$ gcc 1a.c
+bbhavya@bhavya-HP-Envy-x360-2-in-1-Laptop-14-fc0xxx:~/Desktop/SystemSoftware/HandsOn2$ gcc 1a.c
 bhavya@bhavya-HP-Envy-x360-2-in-1-Laptop-14-fc0xxx:~/Desktop/SystemSoftware/HandsOn2$ ./a.out
-setitimer: Success
 Signal catched
 Received signal is 14
 ============================================================================

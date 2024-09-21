@@ -14,7 +14,7 @@ Date: 20th Sep, 2024.
 
 int main(){
     char buf[100];
-    int fd = open("fifo20",O_WRONLY);
+    int fd = open("fifo23",O_WRONLY);
     if(fd == -1){
         perror("cannot open fifo file");
         exit(0);

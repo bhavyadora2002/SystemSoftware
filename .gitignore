@@ -1,3 +1,6 @@
 *.zip
 ./a.out
 List_1/a.out
+MT2024045
+*.out
+*(Copy).c

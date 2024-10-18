@@ -132,3 +132,55 @@ int change_password_ad(int sd,char *uname){
         strcpy(response, "Password not changed\n");
         close(fd_c);
 }
+
+void manage_roles(int sd){
+    int found = 0;
+
+    char emp_username[1024];
+    char msg[] = "Enter Username of Employee: ";
+    write(sd, msg, sizeof(msg));
+    read(sd, emp_username, sizeof(emp_username));
+    printf("Username Received is %s\n",emp_username);  
+
+    int fd_e = open("employee.txt", O_RDONLY);
+    if (fd_e < 0) {
+        perror("Unable to open employee.txt");
+        return;
+    }
+
+    int fd_tmp = open("temp.txt", O_WRONLY | O_CREAT | O_TRUNC, 0744);
+    if (fd_tmp < 0) {
+        perror("Unable to open temp.txt");
+        close(fd_e);
+        return;
+    }
+
+    int fd_m = open("manager.txt", O_WRONLY | O_APPEND | O_CREAT, 0744);
+    if (fd_m < 0) {
+        perror("Unable to open manager.txt");
+        close(fd_e);
+        close(fd_tmp);
+        return;
+    }
+    while (read(fd_e, &e, sizeof(e)) > 0) {
+        if (strcmp(e.username, emp_username) == 0) {
+            found = 1;
+            write(fd_m, &e, sizeof(e)); 
+        } else {
+            write(fd_tmp, &e, sizeof(e)); 
+        }
+    }
+
+    close(fd_e);
+    close(fd_tmp);
+    close(fd_m);
+
+    if (found) {
+        remove("employee.txt");
+        rename("temp.txt", "employee.txt");
+        strcpy(response,"Employee is promoted to manager");
+    } else {
+        remove("temp.txt"); 
+        strcpy(response,"Employee is not found\n");
+    }
+}

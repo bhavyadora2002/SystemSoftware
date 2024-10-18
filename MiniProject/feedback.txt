@@ -1,0 +1,3 @@
+Services are good
+Services are moderate
+services are bad

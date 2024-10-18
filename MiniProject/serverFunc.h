@@ -308,12 +308,25 @@ void transfer_funds(int sd,char *uname) {
     close(fd);
 }
 
-void add_feedback(){
-    int fd_f = open("feedback.txt", O_WRONLY,0744);
-    
+void add_feedback(int sd){
+    char fb[1024];
+    int fd_f = open("feedback.txt", O_WRONLY|O_APPEND|O_CREAT,0744);
+    char fb_msg[] = "Enter Feedback: ";
+    write(sd, fb_msg, sizeof(fb_msg));
+    read(sd, fb, sizeof(fb));
+    printf("Feedback Received is %s\n",fb);
+    lseek(fd_f,0,SEEK_END);
+    strcat(fb,"\n");
+    int i = write(fd_f,&fb,strlen(fb));
+	close(fd_f);
+    if(i>0)
+    strcpy(response,"Added Feedback\n");
+    else
+    strcpy(response,"Unable to add feedback");
 }
 int validate_login(int type,char *uname,char *pass) {
     int i;
+    printf("%d\n",type);
     switch (type) {
     case 1:
     int fd_ad = open("admin.txt",O_RDWR,0744);
@@ -323,15 +336,14 @@ int validate_login(int type,char *uname,char *pass) {
         printf("\nID: %d, Username: %s, Password: %s, Active: %d\n", a.id, a.username, a.password, a.flag);
         if (strcmp(a.username, uname) == 0 &&
                 strcmp(a.password, pass) == 0) {
-                    printf("matched\n");
                 if (a.flag == 0) {
                     a.flag = 1;
-                    printf("flag 0\n");
                     lseek(fd_ad, -sizeof(a), SEEK_CUR);  
                     write(fd_ad, &a, sizeof(a)); 
                     close(fd_ad);
                     return 1;  // Login successful
                 } else {
+                    
                     close(fd_ad);
                     return -1;  // User already logged in
                 }
@@ -340,6 +352,33 @@ int validate_login(int type,char *uname,char *pass) {
         }
         close(fd_ad);
         break;
+    case 2:
+    int fd_m = open("manager.txt",O_RDWR,0744);
+    lseek(fd_m, 0, SEEK_SET);
+    i = read(fd_m, &m, sizeof(m));
+    while (i > 0) {
+        printf("\nID: %d, Username: %s, Password: %s, Active: %d\n", m.id, m.username, m.password, m.flag);
+        if (strcmp(m.username, uname) == 0 &&
+                strcmp(m.password, pass) == 0) {
+                if (m.flag == 0) {
+                    m.flag = 1;
+                    lseek(fd_m, -sizeof(m), SEEK_CUR);  
+                    write(fd_m, &m, sizeof(m)); 
+                    close(fd_m);
+                    return 1;  // Login successful
+                } else {
+                    m.flag = 0;
+                    lseek(fd_m, -sizeof(m), SEEK_CUR);  
+                    write(fd_m, &m, sizeof(m)); 
+                    close(fd_m);
+                    return -1;  // User already logged in
+                }
+            }   
+            i = read(fd_m, &m, sizeof(m));        
+        }
+        close(fd_m);
+        break;
+
     case 4:
     int fd_c = open("customer.txt", O_RDWR,0744);
     lseek(fd_c, 0, SEEK_SET);
@@ -389,7 +428,7 @@ void login(int type,int sd){
             strcpy(response, "Login successful\n");
             strcpy(success, "1\n");
         } else if (validation_result == -1) {
-            strcpy(response, "User already logged in\n");
+            strcpy(response, "User already logged in..Logging out previous session\n");
             strcpy(success,"0\n");
         } else {
             strcpy(response, "Login failed\n");
@@ -423,7 +462,28 @@ int validate_logout(int type,char *uname) {
         }
         close(fd_ad);
         break;
-
+    case 2:
+    int fd_m = open("manager.txt", O_RDWR, 0744);
+     i = read(fd_m, &m, sizeof(m));
+    while (i > 0) {
+        printf("\nID: %d, Username: %s, Password: %s, Active: %d\n", m.id, m.username, m.password, m.flag);
+        if (strcmp(m.username, uname) == 0) {
+                if (m.flag == 1) {
+                    m.flag = 0;
+                    strcpy(uname,"");
+                    lseek(fd_m, -sizeof(m), SEEK_CUR);
+                    write(fd_m,&m,sizeof(m));
+                    close(fd_m);
+                    return 1;  
+                } else{
+                    close(fd_m);
+                    return 0;
+                }
+            }   
+            i = read(fd_m, &m, sizeof(m));        
+        }
+        close(fd_m);
+        break;
     case 4:
     int fd_c = open("customer.txt", O_RDWR, 0744);
      i = read(fd_c, &c, sizeof(c));

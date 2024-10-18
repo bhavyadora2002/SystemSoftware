@@ -10,13 +10,14 @@
 #include "serverFunc.h"
 #include "adminFunc.h"
 
-#define PORT 5053
+#define PORT 5055
 
 
 void* handler(void* arg) {
     char buf[1024];
     char customer_menu[1024];
     char admin_menu[1024];
+    char manager_menu[1024];
     int choice;
     char uname[1024];
     char pass[1024];
@@ -65,6 +66,10 @@ void* handler(void* arg) {
                     modify_employee(sd);
                     send(sd, response, strlen(response) + 1, 0);            
                 }
+                else if(choice == 4){
+                    manage_roles(sd);
+                    send(sd, response, strlen(response) + 1, 0);            
+                }
                 else if(choice == 5){
                     memset(uname, 0, sizeof(uname));
                     recv(sd, uname, sizeof(uname), 0);
@@ -84,6 +89,37 @@ void* handler(void* arg) {
         }
     }
     }else if(usertype == 2){
+    login(usertype, sd);
+    send(sd, response, strlen(response) + 1, 0);
+
+    if(strcmp(response,"Login successful\n")==0){
+        strcpy(manager_menu,"1. Deactivate Account\n"
+            "2. Activate Account\n"
+            "3. Assign Employee\n"
+            "4. Review Feedback\n"
+            "5. Change Password\n"
+            "6. Logout\n"
+            "Enter your Choice : \n"); 
+       while(1){
+                
+            sleep(2);
+            int wr = send(sd, manager_menu, strlen(manager_menu)+1,0);
+                printf("Write is %d",wr);
+                memset(buf, 0, sizeof(buf));
+                read(sd, &buf, sizeof(buf));
+                choice = atoi(buf);
+                printf("choice is %d\n",choice);
+                if(choice == 6){
+                    memset(uname, 0, sizeof(uname));
+                    recv(sd, uname, sizeof(uname), 0);
+                    printf("Uname is: %s\n", uname);
+                    logout(usertype, sd,uname);
+                    send(sd, response, strlen(response) + 1, 0);
+                    break;
+                }
+       }
+    }
+
 
     }else if(usertype == 3){
 
@@ -148,8 +184,9 @@ void* handler(void* arg) {
                     send(sd,response,strlen(response)+1,0);
                 }
                 else if(choice == 7){
-                    add_feedback(); // else if(choice == 2){
-                    
+                    add_feedback(sd); // else if(choice == 2){
+                    send(sd,response,strlen(response)+1,0);
+
                 }
      
                 else if(choice == 8){

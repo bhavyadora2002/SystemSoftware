@@ -7,7 +7,7 @@
 // #include "clientFunc.h"
 
 
-#define PORT 5053
+#define PORT 5055
 
 char buf[1024];
 char rid[1024];
@@ -42,6 +42,13 @@ void transfer_funds(int sock){
     printf("%s", buf);
     scanf("%s", amt);
     write(sock, amt, sizeof(amt));
+}
+void add_feedback(int sock){
+    char fb[1024];
+    read(sock, buf, sizeof(buf));
+    printf("%s", buf);
+    scanf(" %[^\n]", fb); 
+    write(sock, fb, strlen(fb));
 }
 void add_employee(int sock){   
     char unamenew[1024];
@@ -141,14 +148,24 @@ int main() {
             }
             else if(choice == 2){
                 modify_customer(sock);
-                memset(server_reply, 0, sizeof(server_reply));  // Clear buffer
-                recv(sock, server_reply, sizeof(server_reply), 0);  // Receive response
+                memset(server_reply, 0, sizeof(server_reply));  
+                recv(sock, server_reply, sizeof(server_reply), 0);  
                 printf("Server reply: %s\n", server_reply);
             }
             else if(choice == 3){
                 modify_customer(sock);
-                memset(server_reply, 0, sizeof(server_reply));  // Clear buffer
-                recv(sock, server_reply, sizeof(server_reply), 0);  // Receive response
+                memset(server_reply, 0, sizeof(server_reply));  
+                recv(sock, server_reply, sizeof(server_reply), 0);  
+                printf("Server reply: %s\n", server_reply);
+            }
+            else if(choice == 4){
+                char mrole[1024];
+                read(sock, buf, sizeof(buf));
+                printf("%s", buf);
+                scanf("%s", mrole);
+                write(sock, mrole, sizeof(mrole));
+                memset(server_reply, 0, sizeof(server_reply)); 
+                recv(sock, server_reply, sizeof(server_reply), 0);  
                 printf("Server reply: %s\n", server_reply);
             }
             else if(choice == 5){
@@ -161,8 +178,8 @@ int main() {
             else if(choice == 6){
                 send(sock,uname,strlen(uname)+1,0);
                 strcpy(uname,"");
-                memset(server_reply, 0, sizeof(server_reply));  // Clear buffer
-                recv(sock, server_reply, sizeof(server_reply), 0);  // Receive response
+                memset(server_reply, 0, sizeof(server_reply));  
+                recv(sock, server_reply, sizeof(server_reply), 0);  
                 printf("Server reply: %s\n", server_reply);
                 break;
             }
@@ -170,6 +187,36 @@ int main() {
     }
 
     }else if(usertype == 2){
+        login(sock,uname,pass);  
+        memset(server_reply, 0, sizeof(server_reply));
+        recv(sock, server_reply, sizeof(server_reply), 0);
+        printf("Server reply: %s\n", server_reply);
+
+        if(strcmp(server_reply,"Login successful\n")==0){
+        while(1) {
+            memset(Menu, 0, sizeof(Menu)); 
+            // printf("Menu is %s\n",Menu); 
+            recv(sock, Menu, sizeof(Menu)+1,0); 
+            printf("%s\n", Menu); 
+
+            memset(buf, 0, sizeof(buf));  
+            scanf("%s", buf);
+            write(sock, &buf, sizeof(buf));
+
+            choice = atoi(buf);
+            printf("choice is %d\n",choice);
+
+            if (choice == 6) {
+                send(sock,uname,strlen(uname)+1,0);
+                strcpy(uname,"");
+                memset(server_reply, 0, sizeof(server_reply));  
+                recv(sock, server_reply, sizeof(server_reply), 0); 
+                printf("Server reply: %s\n", server_reply);
+                break;
+            }
+        }
+    }
+
 
     }else if(usertype == 3){
 
@@ -231,7 +278,7 @@ int main() {
                 printf("Server reply: %s\n", server_reply);
             }
             else if(choice == 7){
-                // add_feedback();
+                add_feedback(sock);
                 memset(server_reply, 0, sizeof(server_reply));
                 recv(sock, server_reply, sizeof(server_reply), 0);
                 printf("Server reply: %s\n", server_reply);               
@@ -250,12 +297,11 @@ int main() {
                 printf("%s\n", server_reply);  
             }
 
-            // Handle logout
             else if (choice == 9) {
                 send(sock,uname,strlen(uname)+1,0);
                 strcpy(uname,"");
-                memset(server_reply, 0, sizeof(server_reply));  // Clear buffer
-                recv(sock, server_reply, sizeof(server_reply), 0);  // Receive response
+                memset(server_reply, 0, sizeof(server_reply));  
+                recv(sock, server_reply, sizeof(server_reply), 0); 
                 printf("Server reply: %s\n", server_reply);
                 break;
             }

@@ -99,7 +99,7 @@ int main(){
     int fd_m = open("manager.txt",O_RDWR|O_TRUNC|O_CREAT,0744);
 	m.id = 1;
     strcpy(m.username ,"manager");
-    strcpy(m.password,"managerpass");
+    strcpy(m.password,"passman");
     m.flag = 0;
     write(fd_m,&m,sizeof(m));
     lseek(fd_m, 0, SEEK_SET);

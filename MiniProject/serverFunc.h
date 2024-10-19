@@ -14,6 +14,7 @@ struct cust {
     char username[15];
     char password[15];
     int flag;
+    int active;
 } c,a,e,m;
 
 struct{
@@ -26,6 +27,7 @@ struct{
         int eid;
         char eusername[15];
         char status[15];
+        int active;
 }ac,sender_ac,receiver_ac;
 
 void read_users_from_file() {
@@ -33,7 +35,7 @@ void read_users_from_file() {
     lseek(fd_c, 0, SEEK_SET);
     int i = read(fd_c, &c, sizeof(c));
     while (i > 0) {
-        printf("\nID: %d, Username: %s, Password: %s, Active: %d\n", c.id, c.username, c.password, c.flag);
+        printf("\nID: %d, Username: %s, Password: %s, Active: %d,Status: %d\n", c.id, c.username, c.password, c.flag,c.active);
         i = read(fd_c, &c, sizeof(c));
     }
 
@@ -62,7 +64,7 @@ void read_users_from_file() {
 
     i = read(fd_ac, &ac, sizeof(ac));
     while (i > 0) {
-        printf("\nID: %d, Username: %s, Balance: %d, Loan: %d, TransactionNo: %d, EID: %d, EUsername: %s,Status: %s\n", ac.id, ac.username, ac.balance, ac.loan,ac.transaction_count,ac.eid,ac.eusername,ac.status);
+        printf("\nID: %d, Username: %s, Balance: %d, Loan: %d, TransactionNo: %d, EID: %d, EUsername: %s,Status: %s,Active: %d\n", ac.id, ac.username, ac.balance, ac.loan,ac.transaction_count,ac.eid,ac.eusername,ac.status,ac.active);
         for(int i = 0;i<=ac.transaction_count;i++){
             printf("%f ",ac.transaction[i]);
         }
@@ -324,6 +326,55 @@ void add_feedback(int sd){
     else
     strcpy(response,"Unable to add feedback");
 }
+
+void apply_loan(int sd,char *uname){
+    char loan[1024];
+    int lamt;
+    int fd_ac = open("account.txt", O_RDWR,0744);
+    int i = read(fd_ac, &ac, sizeof(ac));
+    
+    while (i > 0) {
+        printf("\nID: %d, Username: %s\n", ac.id,ac.username);
+        if (strcmp(ac.username, uname) == 0 ) {
+            if(ac.active){
+                if(strcmp(ac.status,"No") == 0){
+                    printf("Uname %s\n",uname);
+                    char loan_msg[] = "Enter Loan Amount: ";
+                    write(sd, loan_msg, sizeof(loan_msg));
+                    read(sd, loan, sizeof(loan));
+                    printf("Loan Amount entered is %s\n",loan);
+                    lamt = atoi(loan);
+                    ac.loan = lamt;
+                    strcpy(ac.status,"Pending");
+                    lseek(fd_ac, -sizeof(ac), SEEK_CUR);  
+                    int by = write(fd_ac, &ac, sizeof(ac)); 
+                    if(by>0){
+                    close(fd_ac);
+                    strcpy(response,"Loan applied Successfuly\n");
+                    return;
+                    }
+                    else{
+                    close(fd_ac);
+                    strcpy(response,"Error updating loan info\n");
+                    return;
+                    }
+                    }
+                else{
+                close(fd_ac);
+                strcpy(response,"Cannot apply for multiple loans\n");
+                return;
+                }
+            }
+                strcpy(response,"Not Active User\n");
+                close(fd_ac);
+                return;
+            } 
+            i = read(fd_ac, &ac, sizeof(ac));     
+    }   
+    strcpy(response, "User record not found\n");
+    close(fd_ac);
+    return;
+}
 int validate_login(int type,char *uname,char *pass) {
     int i;
     printf("%d\n",type);
@@ -335,7 +386,7 @@ int validate_login(int type,char *uname,char *pass) {
     while (i > 0) {
         printf("\nID: %d, Username: %s, Password: %s, Active: %d\n", a.id, a.username, a.password, a.flag);
         if (strcmp(a.username, uname) == 0 &&
-                strcmp(a.password, pass) == 0) {
+                strcmp(a.password, pass) == 0 && a.active) {
                 if (a.flag == 0) {
                     a.flag = 1;
                     lseek(fd_ad, -sizeof(a), SEEK_CUR);  
@@ -359,7 +410,7 @@ int validate_login(int type,char *uname,char *pass) {
     while (i > 0) {
         printf("\nID: %d, Username: %s, Password: %s, Active: %d\n", m.id, m.username, m.password, m.flag);
         if (strcmp(m.username, uname) == 0 &&
-                strcmp(m.password, pass) == 0) {
+                strcmp(m.password, pass) == 0 && m.active) {
                 if (m.flag == 0) {
                     m.flag = 1;
                     lseek(fd_m, -sizeof(m), SEEK_CUR);  
@@ -378,7 +429,32 @@ int validate_login(int type,char *uname,char *pass) {
         }
         close(fd_m);
         break;
-
+    case 3:
+    int fd_e = open("employee.txt", O_RDWR,0744);
+    lseek(fd_e, 0, SEEK_SET);
+    i = read(fd_e, &e, sizeof(e));
+    while (i > 0) {
+        printf("\nID: %d, Username: %s, Password: %s, Active: %d\n", e.id, e.username, e.password, e.flag);
+        if (strcmp(e.username, uname) == 0 &&
+                strcmp(e.password, pass) == 0 && e.active) {
+                if (e.flag == 0) {
+                    e.flag = 1;
+                    lseek(fd_e, -sizeof(e), SEEK_CUR);  
+                    write(fd_e, &e, sizeof(e)); 
+                    close(fd_e);
+                    return 1;  // Login successful
+                } else {
+                    e.flag = 0;
+                    lseek(fd_e, -sizeof(e), SEEK_CUR);  
+                    write(fd_e, &e, sizeof(e)); 
+                    close(fd_e);
+                    return -1;  // User already logged in
+                }
+            }   
+            i = read(fd_e, &e, sizeof(e));        
+        }
+        close(fd_e);
+        break;  
     case 4:
     int fd_c = open("customer.txt", O_RDWR,0744);
     lseek(fd_c, 0, SEEK_SET);
@@ -386,7 +462,7 @@ int validate_login(int type,char *uname,char *pass) {
     while (i > 0) {
         printf("\nID: %d, Username: %s, Password: %s, Active: %d\n", c.id, c.username, c.password, c.flag);
         if (strcmp(c.username, uname) == 0 &&
-                strcmp(c.password, pass) == 0) {
+                strcmp(c.password, pass) == 0 && c.active) {
                 if (c.flag == 0) {
                     c.flag = 1;
                     lseek(fd_c, -sizeof(c), SEEK_CUR);  
@@ -401,7 +477,7 @@ int validate_login(int type,char *uname,char *pass) {
             i = read(fd_c, &c, sizeof(c));        
         }
         close(fd_c);
-        break;
+        break;  
     }
     return 0;  // Login failed
 }
@@ -484,6 +560,30 @@ int validate_logout(int type,char *uname) {
         }
         close(fd_m);
         break;
+
+    case 3:
+    int fd_e = open("employee.txt", O_RDWR, 0744);
+     i = read(fd_e, &e, sizeof(e));
+    while (i > 0) {
+        printf("\nID: %d, Username: %s, Password: %s, Active: %d\n", e.id, e.username, e.password, e.flag);
+        if (strcmp(e.username, uname) == 0) {
+                if (e.flag == 1) {
+                    e.flag = 0;
+                    strcpy(uname,"");
+                    lseek(fd_e, -sizeof(e), SEEK_CUR);
+                    write(fd_e,&e,sizeof(e));
+                    close(fd_e);
+                    return 1;  
+                } else{
+                    close(fd_e);
+                    return 0;
+                }
+            }   
+            i = read(fd_e, &e, sizeof(e));        
+        }
+        close(fd_e);
+        break;
+
     case 4:
     int fd_c = open("customer.txt", O_RDWR, 0744);
      i = read(fd_c, &c, sizeof(c));

@@ -1,0 +1,104 @@
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
+#include <fcntl.h>
+
+char response[1024];
+
+
+void add_customer(int sd){
+    char unamenew[1024];
+    char passnew[1024];
+    char idnew[1024];
+    int fd_c = open("customer.txt",O_RDWR|O_CREAT,0744);
+
+    char msg[] = "Enter Username: ";
+    write(sd, msg, sizeof(msg));
+    read(sd, unamenew, sizeof(unamenew));
+    printf("Username Received is %s\n",unamenew);
+
+    char pass_msg[] = "Enter Password: ";
+    write(sd, pass_msg, sizeof(pass_msg));
+    read(sd, passnew, sizeof(passnew));
+    printf("Password Received is %s\n",passnew);
+
+    char id_msg[] = "Enter ID: ";
+    write(sd, id_msg, sizeof(id_msg));
+    read(sd, idnew, sizeof(idnew));
+    printf("ID Received is %s\n",idnew);
+    int id = atoi(idnew);
+    c.id =id;
+    strcpy(c.username,unamenew);
+    strcpy(c.password,passnew);
+    c.flag = 0;
+    c.active = 1;
+    lseek(fd_c,0,SEEK_END);
+    int i = write(fd_c,&c,sizeof(c));
+	close(fd_c);
+    if(i>0)
+    strcpy(response,"Added Customer\n");
+    else
+    strcpy(response,"Unable to add customer");
+}
+
+
+
+int change_password_emp(int sd,char *uname){
+    char new_pass[1024];
+    int fd_c = open("employee.txt", O_RDWR, 0744);
+    int i = read(fd_c, &c, sizeof(c));
+    while (i > 0) {
+        printf("\nID: %d, Username: %s, Password: %s, Active: %d\n", c.id, c.username, c.password, c.flag);
+        if (strcmp(c.username, uname) == 0) {
+                if (c.flag == 1) {
+                    char msg[] = "Enter New Password: ";
+                    write(sd, msg, sizeof(msg));
+                    read(sd, new_pass, sizeof(new_pass));
+                    printf("New Password is %s\n",new_pass);
+                    strcpy(c.password,new_pass);
+                    lseek(fd_c, -sizeof(c), SEEK_CUR);  
+                    write(fd_c, &c, sizeof(c)); 
+                    close(fd_c);
+                    strcpy(response, "Password Changed\n");
+                    return 1; 
+                } 
+            }   
+            i = read(fd_c, &c, sizeof(c));        
+        }
+        strcpy(response, "Password not changed\n");
+        close(fd_c);
+}
+
+void view_loans(int sd,char *uname) {
+    char emp_id[1024];
+    char response[1024];
+    int fd_ac = open("account.txt", O_RDONLY, 0744);
+
+    if (fd_ac == -1) {
+        strcpy(response, "Error opening account file\n");
+        send(sd, response, strlen(response) + 1, 0);
+        return;
+    }
+
+      int found_any = 0;
+
+    while (read(fd_ac, &ac, sizeof(ac)) > 0) {
+        printf("\nID: %d, Username: %s, Loan: %d, Status: %s\n", ac.id, ac.username, ac.loan, ac.status);
+        if (strcmp(ac.eusername,uname) == 0) { // Compare with the employee ID
+            snprintf(response, sizeof(response), "Customer ID: %d, Username: %s,Loan: %d, Status: %s\n",
+                     ac.id, ac.username,ac.loan, ac.status);
+            int r =send(sd, response, strlen(response) + 1, 0);
+            printf("Bytes sent %d\n",r);
+            found_any = 1; // Mark that we found at least one customer
+        }
+    }
+
+    if (!found_any) {
+        strcpy(response, "No customers found for this employee.\n");
+        send(sd, response, strlen(response) + 1, 0);
+    }
+
+    close(fd_ac);
+}
+

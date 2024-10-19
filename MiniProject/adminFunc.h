@@ -72,6 +72,7 @@ void modify_customer(int sd){
     }      
         strcpy(response,"Error modifying details\n");
         close(fd_c);
+        return;
 }
 
 void modify_employee(int sd){

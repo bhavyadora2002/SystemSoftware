@@ -9,8 +9,10 @@
 #include <fcntl.h>
 #include "serverFunc.h"
 #include "adminFunc.h"
+#include "managerFunc.h"
+#include "employeeFunc.h"
 
-#define PORT 5055
+#define PORT 5057
 
 
 void* handler(void* arg) {
@@ -18,6 +20,7 @@ void* handler(void* arg) {
     char customer_menu[1024];
     char admin_menu[1024];
     char manager_menu[1024];
+    char employee_menu[1024];
     int choice;
     char uname[1024];
     char pass[1024];
@@ -93,8 +96,8 @@ void* handler(void* arg) {
     send(sd, response, strlen(response) + 1, 0);
 
     if(strcmp(response,"Login successful\n")==0){
-        strcpy(manager_menu,"1. Deactivate Account\n"
-            "2. Activate Account\n"
+        strcpy(manager_menu,"1. Activate Account\n"
+            "2. Deactivate Account\n"
             "3. Assign Employee\n"
             "4. Review Feedback\n"
             "5. Change Password\n"
@@ -109,7 +112,31 @@ void* handler(void* arg) {
                 read(sd, &buf, sizeof(buf));
                 choice = atoi(buf);
                 printf("choice is %d\n",choice);
-                if(choice == 6){
+                if(choice == 1){
+                    activate_account(sd);
+                    send(sd, response, strlen(response) + 1, 0);
+                }
+                else if(choice == 2){
+                    
+                    deactivate_account(sd);
+                    send(sd, response, strlen(response) + 1, 0);
+                }
+                else if(choice == 3){
+                    assign_employee(sd);
+                    send(sd, response, strlen(response) + 1, 0);
+                }
+                else if(choice == 4){
+                    review_feedback(sd);
+                    send(sd, response, strlen(response) + 1, 0);
+                }
+                else if(choice == 5){
+                    memset(uname, 0, sizeof(uname));
+                    recv(sd, uname, sizeof(uname), 0);
+                    printf("Uname is: %s\n", uname);
+                    change_password_man(sd,uname);
+                    send(sd,response,strlen(response)+1,0);
+                }
+                else if(choice == 6){
                     memset(uname, 0, sizeof(uname));
                     recv(sd, uname, sizeof(uname), 0);
                     printf("Uname is: %s\n", uname);
@@ -122,6 +149,59 @@ void* handler(void* arg) {
 
 
     }else if(usertype == 3){
+    login(usertype, sd);
+    send(sd, response, strlen(response) + 1, 0);
+
+    if(strcmp(response,"Login successful\n")==0){
+        strcpy(employee_menu,"1. Add Customer\n"
+            "2. Modify Customer Details\n"
+            "3. Process Loan Applications\n"
+            "4. Approve/Reject Loan\n"
+            "5. View Assign Loan Applications\n"
+            "6. View Transactions\n"
+            "7. Change Password\n"
+            "8. Logout\n"
+            "Enter your Choice : \n"); 
+       while(1){
+                
+            sleep(2);
+            int wr = send(sd, employee_menu, strlen(employee_menu)+1,0);
+                printf("Write is %d",wr);
+                memset(buf, 0, sizeof(buf));
+                read(sd, &buf, sizeof(buf));
+                choice = atoi(buf);
+                printf("choice is %d\n",choice);
+                if(choice == 1){
+                    add_customer(sd);
+                    send(sd, response, strlen(response) + 1, 0);
+                }
+                else if(choice == 2){
+                    modify_customer(sd);
+                    send(sd, response, strlen(response) + 1, 0);
+                }
+                else if(choice == 5){
+                    memset(uname, 0, sizeof(uname));
+                    recv(sd, uname, sizeof(uname), 0);
+                    printf("Uname is: %s\n", uname);
+                    view_loans(sd,uname);
+                }
+                else if(choice == 7){
+                    memset(uname, 0, sizeof(uname));
+                    recv(sd, uname, sizeof(uname), 0);
+                    printf("Uname is: %s\n", uname);
+                    change_password_emp(sd,uname);
+                    send(sd,response,strlen(response)+1,0);
+                }
+                else if(choice == 8){
+                    memset(uname, 0, sizeof(uname));
+                    recv(sd, uname, sizeof(uname), 0);
+                    printf("Uname is: %s\n", uname);
+                    logout(usertype, sd,uname);
+                    send(sd, response, strlen(response) + 1, 0);
+                    break;
+                }
+       }
+    }
 
     }else if(usertype == 4){
     login(usertype, sd);
@@ -175,6 +255,14 @@ void* handler(void* arg) {
                     printf("Uname is: %s\n", uname);
                     transfer_funds(sd,uname);
                     send(sd,response,strlen(response)+1,0);
+                }
+                else if(choice == 5){
+                    memset(uname, 0, sizeof(uname));
+                    recv(sd, uname, sizeof(uname), 0);
+                    printf("Uname is: %s\n", uname);
+                    apply_loan(sd,uname);
+                    send(sd,response,strlen(response)+1,0);
+
                 }
                 else if(choice == 6){
                     memset(uname, 0, sizeof(uname));

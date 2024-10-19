@@ -176,7 +176,15 @@ void* handler(void* arg) {
                     send(sd, response, strlen(response) + 1, 0);
                 }
                 else if(choice == 2){
+                    
                     modify_customer(sd);
+                    send(sd, response, strlen(response) + 1, 0);
+                }
+                else if(choice == 4){
+                    memset(uname, 0, sizeof(uname));
+                    recv(sd, uname, sizeof(uname), 0);
+                    printf("Uname is: %s\n", uname);
+                    aporrej_loan(sd,uname);
                     send(sd, response, strlen(response) + 1, 0);
                 }
                 else if(choice == 5){

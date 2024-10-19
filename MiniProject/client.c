@@ -158,24 +158,32 @@ void assign_employee(int sock) {
 }
 
 void view_loans(int sock) {
-    char emp_id[1024];
-    char server_reply[1024];
+    char server_reply[4096];  // Larger buffer to receive all customer information
 
-    while (1) {
-        sleep(2);
-        memset(server_reply, 0, sizeof(server_reply));
-        int reply_received = recv(sock, server_reply, sizeof(server_reply), 0);
-        if (reply_received > 0) {
-            printf("Bytes received %d\n",reply_received);
-            if (strcmp(server_reply, "No customers found for this employee.\n") == 0) {
-                printf("%s", server_reply);
-                break; 
-            }
-            printf("%s", server_reply);
-        } else {
-            break; 
-        }
+    memset(server_reply, 0, sizeof(server_reply));
+    int reply_received = recv(sock, server_reply, sizeof(server_reply), 0);  // Receive in one operation
+
+    if (reply_received > 0) {
+        printf("Bytes received: %d\n", reply_received);
+        printf("%s\n", server_reply);  // Print all received data at once
+    } else {
+        printf("Error receiving data or no data received.\n");
     }
+}
+
+void aporrej_loan(int sock){
+    char c_id[1024];
+    char stat[1024];
+    char buf[1024];
+    read(sock, buf, sizeof(buf));
+    printf("%s\n", buf);
+    scanf("%s", c_id);
+    write(sock, c_id, sizeof(c_id));
+
+    read(sock, buf, sizeof(buf));
+    printf("%s\n", buf);
+    scanf("%s", stat);
+    write(sock, stat, sizeof(stat));
 }
 
 int main() {
@@ -372,6 +380,13 @@ int main() {
             }
             else if(choice == 2){
                 modify_customer(sock);
+                memset(server_reply, 0, sizeof(server_reply));  
+                recv(sock, server_reply, sizeof(server_reply), 0);  
+                printf("Server reply: %s\n", server_reply);
+            }
+            else if(choice == 4){
+                send(sock,uname,strlen(uname)+1,0);
+                aporrej_loan(sock);
                 memset(server_reply, 0, sizeof(server_reply));  
                 recv(sock, server_reply, sizeof(server_reply), 0);  
                 printf("Server reply: %s\n", server_reply);

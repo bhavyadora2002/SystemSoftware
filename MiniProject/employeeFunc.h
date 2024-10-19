@@ -69,10 +69,9 @@ int change_password_emp(int sd,char *uname){
         strcpy(response, "Password not changed\n");
         close(fd_c);
 }
-
-void view_loans(int sd,char *uname) {
-    char emp_id[1024];
-    char response[1024];
+void view_loans(int sd, char *uname) {
+    char response[4096];  // Larger buffer to hold all customer information
+    char temp[512];  // Temporary buffer to hold individual customer info
     int fd_ac = open("account.txt", O_RDONLY, 0744);
 
     if (fd_ac == -1) {
@@ -81,24 +80,78 @@ void view_loans(int sd,char *uname) {
         return;
     }
 
-      int found_any = 0;
+    response[0] = '\0';  // Initialize the response buffer to an empty string
+    int found_any = 0;
 
     while (read(fd_ac, &ac, sizeof(ac)) > 0) {
-        printf("\nID: %d, Username: %s, Loan: %d, Status: %s\n", ac.id, ac.username, ac.loan, ac.status);
-        if (strcmp(ac.eusername,uname) == 0) { // Compare with the employee ID
-            snprintf(response, sizeof(response), "Customer ID: %d, Username: %s,Loan: %d, Status: %s\n",
-                     ac.id, ac.username,ac.loan, ac.status);
-            int r =send(sd, response, strlen(response) + 1, 0);
-            printf("Bytes sent %d\n",r);
-            found_any = 1; // Mark that we found at least one customer
+        if (strcmp(ac.eusername, uname) == 0) {  // Compare with the employee's username
+            snprintf(temp, sizeof(temp), "Customer ID: %d, Username: %s, Loan: %d, Status: %s\n",
+                     ac.id, ac.username, ac.loan, ac.status);
+            strncat(response, temp, sizeof(response) - strlen(response) - 1);  // Append to response buffer
+            found_any = 1;
         }
     }
 
+    // If no customers found, add a message to the buffer
     if (!found_any) {
         strcpy(response, "No customers found for this employee.\n");
+    }
+
+    send(sd, response, strlen(response) + 1, 0);  // Send the entire buffer in one operation
+    close(fd_ac);
+}
+
+void aporrej_loan(int sd,char *uname){
+    char c_id[1024];
+    char stat[1024];
+    int found = 0;
+    char msg[] = "Enter Customer Id: ";
+    write(sd, msg, sizeof(msg));
+    read(sd, c_id, sizeof(c_id));
+    printf("Id Received is %s\n",c_id);
+    int cid = atoi(c_id);
+
+    char pass_msg[] = "Enter decision(Approve/Reject): ";
+    write(sd, pass_msg, sizeof(pass_msg));
+    read(sd, stat, sizeof(stat));
+    printf("Decision Received is %s\n",stat);
+
+    int fd_ac = open("account.txt", O_RDWR, 0744);
+
+    if (fd_ac == -1) {
+        strcpy(response, "Error opening account file\n");
         send(sd, response, strlen(response) + 1, 0);
+        return;
+    }
+    lseek(fd_ac, 0, SEEK_SET); 
+    while (read(fd_ac, &ac, sizeof(ac)) > 0) {
+        if (ac.id == cid) {
+            found = 1;
+            if (strcmp(ac.eusername, uname) != 0) {
+                strcpy(response, "You don't have permissions to modify this customer.\n");
+                break;
+            }
+            if (strcmp(ac.status, "Pending") != 0) {
+                strcpy(response, "This customer loan status is not pending.\n");
+                break;
+            }
+            if (strcmp(stat, "Approve") == 0) {
+                
+                strcpy(ac.status, "Approved");
+            } else if (strcmp(stat, "Reject") == 0) {
+                strcpy(ac.status, "Rejected");
+            }
+
+            lseek(fd_ac, -sizeof(ac), SEEK_CUR);
+            write(fd_ac, &ac, sizeof(ac));
+
+            snprintf(response, sizeof(response), "Customer %d loan has been %s.\n", cid, ac.status);
+            break;
+        }
+        if (!found) {
+        strcpy(response, "Error: Customer not found.\n");  // Customer ID was not found in the file
+    }
     }
 
     close(fd_ac);
 }
-

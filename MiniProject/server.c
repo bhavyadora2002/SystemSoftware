@@ -12,7 +12,7 @@
 #include "managerFunc.h"
 #include "employeeFunc.h"
 
-#define PORT 5053
+#define PORT 5052
 
 
 void* handler(void* arg) {
@@ -180,6 +180,13 @@ void* handler(void* arg) {
                     modify_customer(sd);
                     send(sd, response, strlen(response) + 1, 0);
                 }
+                else if(choice == 3){
+                    memset(uname, 0, sizeof(uname));
+                    recv(sd, uname, sizeof(uname), 0);
+                    printf("Uname is: %s\n", uname);
+                    process_loan(sd,uname);
+                    send(sd, response, strlen(response) + 1, 0);
+                }
                 else if(choice == 4){
                     memset(uname, 0, sizeof(uname));
                     recv(sd, uname, sizeof(uname), 0);
@@ -187,11 +194,21 @@ void* handler(void* arg) {
                     aporrej_loan(sd,uname);
                     send(sd, response, strlen(response) + 1, 0);
                 }
+                
                 else if(choice == 5){
                     memset(uname, 0, sizeof(uname));
                     recv(sd, uname, sizeof(uname), 0);
                     printf("Uname is: %s\n", uname);
                     view_loans(sd,uname);
+                }
+                else if(choice == 6){
+                    char msg[] = "Enter Customer Username to see history: ";
+                    char u_name[1024];
+                    write(sd, msg, sizeof(msg));
+                    read(sd, u_name, sizeof(u_name));
+                    printf("Customer Username Received: %s\n", u_name);
+                    view_history(sd,u_name);
+                    send(sd, response, strlen(response) + 1, 0);
                 }
                 else if(choice == 7){
                     memset(uname, 0, sizeof(uname));
@@ -290,6 +307,7 @@ void* handler(void* arg) {
                     recv(sd, uname, sizeof(uname), 0);
                     printf("Uname is: %s\n", uname);
                     view_history(sd,uname);
+                    send(sd,response,strlen(response)+1,0);
                 }
                 else if (choice == 9) {  // Logout
                     memset(uname, 0, sizeof(uname));

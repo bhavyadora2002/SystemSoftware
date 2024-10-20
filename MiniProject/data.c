@@ -11,14 +11,14 @@ int main(){
         int flag;
         int active;
 	}c,a,m,e;
-    
+
     struct{
         int id;
         char username[15];
         int balance;
         int loan;
         int transaction_count;
-        float transaction[1024];
+        char transactions[1024];        
         int eid;
         char eusername[15];
         char status[15];
@@ -60,9 +60,8 @@ int main(){
         ac.balance = 10000*(i+1);
         ac.loan = 0;
         ac.transaction_count = 0;
-        for (int j = 0; j < 1024; j++) {
-            ac.transaction[j] = 0.0;  
-        }
+        strcpy(ac.transactions, "");  
+        
         ac.eid = -1;
         char str2[10] = "";
         ac.active = 1;
@@ -74,10 +73,16 @@ int main(){
 
     i = read(fd_ac, &ac, sizeof(ac));
     while (i > 0) {
-        printf("\nID: %d, Username: %s, Balance: %d, Loan: %d, TransactionNo: %d, EID: %d, EUsername: %s,Status: %s,Active: %d\n", ac.id, ac.username, ac.balance, ac.loan,ac.transaction_count,ac.eid,ac.eusername,ac.status,ac.active);
-        for(int i = 0;i<=ac.transaction_count;i++){
-            printf("%f ",ac.transaction[i]);
+        printf("\nID: %d, Username: %s, Balance: %d, Loan: %d, Transaction Count: %d, EID: %d, EUsername: %s, Status: %s, Active: %d\n", 
+               ac.id, ac.username, ac.balance, ac.loan, ac.transaction_count, ac.eid, ac.eusername, ac.status, ac.active);
+        
+        // Display each transaction by splitting with '\n'
+        char *transaction = strtok(ac.transactions, "\n");
+        while (transaction != NULL) {
+            printf("Transaction: %s\n", transaction);
+            transaction = strtok(NULL, "\n");
         }
+
         i = read(fd_ac, &ac, sizeof(ac));
     }
     close(fd_ac);
@@ -120,7 +125,7 @@ int main(){
         char str1[10] = "emp";
         char str2[10] = "epass";
         char str[3];
-        sprintf(str, "%d", i+1); // Convert integer to string
+        sprintf(str, "%d", i+1); 
         strcat(str1, str); 
         strcat(str2,str);
 		strcpy(e.username,str1);

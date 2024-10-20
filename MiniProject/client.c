@@ -7,14 +7,14 @@
 #include <fcntl.h>
 
 
-#define PORT 5053
+#define PORT 5052
 struct{
         int id;
         char username[15];
         int balance;
         int loan;
         int transaction_count;
-        float transaction[1024];
+        char transaction[1024];
         int eid;
         char eusername[15];
         char status[15];
@@ -195,29 +195,25 @@ int main() {
     int sock;
     struct sockaddr_in server;
 
-    // Create socket
     sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock == -1) {
         printf("Could not create socket");
         return 1;
     }
 
-    server.sin_addr.s_addr = INADDR_ANY;  // Localhost
+    server.sin_addr.s_addr = INADDR_ANY; 
     server.sin_family = AF_INET;
     server.sin_port = htons(PORT);
 
-    // Connect to remote server
     if (connect(sock, (struct sockaddr*)&server, sizeof(server)) < 0) {
         perror("Connection failed");
         return 1;
     }
     printf("Connected to server.\n");
     
-    // Receive and print the menu
     read(sock, Menu, sizeof(Menu));
     printf("%s", Menu);
 
-    // Get user choice and send to server
     scanf("%s", buf);
     write(sock, buf, sizeof(buf));
 
@@ -382,6 +378,17 @@ int main() {
                 recv(sock, server_reply, sizeof(server_reply), 0);  
                 printf("Server reply: %s\n", server_reply);
             }
+            else if(choice == 3){
+                send(sock,uname,strlen(uname)+1,0);
+                char u_name[1024];
+                read(sock, buf, sizeof(buf));
+                printf("%s\n", buf);
+                scanf("%s", u_name);
+                write(sock, u_name, sizeof(u_name));
+                memset(server_reply, 0, sizeof(server_reply));  
+                recv(sock, server_reply, sizeof(server_reply), 0);  
+                printf("Server reply: %s\n", server_reply);
+            }
             else if(choice == 4){
                 send(sock,uname,strlen(uname)+1,0);
                 aporrej_loan(sock);
@@ -392,6 +399,15 @@ int main() {
             else if(choice == 5){
                 send(sock,uname,strlen(uname)+1,0);
                 view_loans(sock);
+            }else if(choice == 6){
+                char u_name[1024];
+                read(sock, buf, sizeof(buf));
+                printf("%s\n", buf);
+                scanf("%s", u_name);
+                write(sock, u_name, sizeof(u_name));
+                memset(server_reply, 0, sizeof(server_reply));  
+                recv(sock, server_reply, sizeof(server_reply), 0);  
+                printf("Server reply: %s\n", server_reply);
             }
             else if(choice == 7){
                 send(sock,uname,strlen(uname)+1,0);

@@ -70,8 +70,8 @@ int change_password_emp(int sd,char *uname){
         close(fd_c);
 }
 void view_loans(int sd, char *uname) {
-    char response[4096];  // Larger buffer to hold all customer information
-    char temp[512];  // Temporary buffer to hold individual customer info
+    char response[4096];  
+    char temp[512];  
     int fd_ac = open("account.txt", O_RDONLY, 0744);
 
     if (fd_ac == -1) {
@@ -80,24 +80,23 @@ void view_loans(int sd, char *uname) {
         return;
     }
 
-    response[0] = '\0';  // Initialize the response buffer to an empty string
+    response[0] = '\0';  
     int found_any = 0;
 
     while (read(fd_ac, &ac, sizeof(ac)) > 0) {
-        if (strcmp(ac.eusername, uname) == 0) {  // Compare with the employee's username
+        if (strcmp(ac.eusername, uname) == 0) {  
             snprintf(temp, sizeof(temp), "Customer ID: %d, Username: %s, Loan: %d, Status: %s\n",
                      ac.id, ac.username, ac.loan, ac.status);
-            strncat(response, temp, sizeof(response) - strlen(response) - 1);  // Append to response buffer
+            strncat(response, temp, sizeof(response) - strlen(response) - 1);  
             found_any = 1;
         }
     }
 
-    // If no customers found, add a message to the buffer
     if (!found_any) {
         strcpy(response, "No customers found for this employee.\n");
     }
 
-    send(sd, response, strlen(response) + 1, 0);  // Send the entire buffer in one operation
+    send(sd, response, strlen(response) + 1, 0);  
     close(fd_ac);
 }
 
@@ -154,4 +153,49 @@ void aporrej_loan(int sd,char *uname){
     }
 
     close(fd_ac);
+}
+void process_loan(int sd,char *uname){
+    char c_id[1024];
+    char msg[] = "Enter Customer Id: ";
+    write(sd, msg, sizeof(msg));
+    read(sd, c_id, sizeof(c_id));
+    printf("Id Received is %s\n",c_id);
+    int cid = atoi(c_id);
+
+    int fd = open("account.txt", O_RDWR, 0744);
+
+    if (fd == -1) {
+        strcpy(response, "Error opening account file\n");
+        return;
+    }
+    lseek(fd,(cid-1)*sizeof(ac),SEEK_SET);
+    if (strcmp(ac.eusername, uname) != 0) {
+                strcpy(response, "You don't have permissions for this customer.\n");
+                return;
+    }
+    if (strcmp(ac.status, "Approved") != 0) {
+                strcpy(response, "This customer loan status is not aproved.\n");
+                return;
+    }
+    struct flock lock;
+	lock.l_type = F_WRLCK;
+	lock.l_whence = SEEK_SET;
+	lock.l_start = (cid-1)*sizeof(ac);
+	lock.l_len = sizeof(ac);
+	lock.l_pid = getpid();
+    fcntl(fd,F_SETLKW,&lock);
+	lseek(fd,(cid-1)*sizeof(ac),SEEK_SET);
+	read(fd,&ac,sizeof(ac));
+    ac.balance += ac.loan;  
+    int offset = strlen(ac.transactions); 
+    snprintf(ac.transactions + offset, sizeof(ac.transactions) - offset, "Loan credited %d", ac.loan);
+    ac.transaction_count++;
+    strcpy(ac.status,"Credited");
+    lseek(fd, -sizeof(ac), SEEK_CUR);  
+    write(fd, &ac, sizeof(ac));  
+    lock.l_type = F_UNLCK;
+	fcntl(fd,F_SETLK,&lock);
+    printf("Sent success\n");
+    strcpy(response,"Loan credited successfully\n");
+    return;
 }

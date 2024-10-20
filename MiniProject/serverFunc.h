@@ -23,7 +23,7 @@ struct{
         int balance;
         int loan;
         int transaction_count;
-        float transaction[1024];
+        char transactions[1024];
         int eid;
         char eusername[15];
         char status[15];
@@ -64,10 +64,14 @@ void read_users_from_file() {
 
     i = read(fd_ac, &ac, sizeof(ac));
     while (i > 0) {
-        printf("\nID: %d, Username: %s, Balance: %d, Loan: %d, TransactionNo: %d, EID: %d, EUsername: %s,Status: %s,Active: %d\n", ac.id, ac.username, ac.balance, ac.loan,ac.transaction_count,ac.eid,ac.eusername,ac.status,ac.active);
-        for(int i = 0;i<=ac.transaction_count;i++){
-            printf("%f ",ac.transaction[i]);
+        printf("\nID: %d, Username: %s, Balance: %d, Loan: %d, Transaction Count: %d, EID: %d, EUsername: %s, Status: %s, Active: %d\n", 
+               ac.id, ac.username, ac.balance, ac.loan, ac.transaction_count, ac.eid, ac.eusername, ac.status, ac.active);
+        char *transaction = strtok(ac.transactions, "\n");
+        while (transaction != NULL) {
+            printf("Transaction: %s\n", transaction);
+            transaction = strtok(NULL, "\n");
         }
+
         i = read(fd_ac, &ac, sizeof(ac));
     }
 }
@@ -146,6 +150,7 @@ void deposit_money(int sd, char *uname) {
         strcpy(response, "User not logged in\n");
         return;
     }
+    if(ac.active==1){
     struct flock lock;
 	lock.l_type = F_WRLCK;
 	lock.l_whence = SEEK_SET;
@@ -156,15 +161,22 @@ void deposit_money(int sd, char *uname) {
 	lseek(fd_ac,(cid-1)*sizeof(ac),SEEK_SET);
 	read(fd_ac,&ac,sizeof(ac));
     ac.balance += balance; 
-    ac.transaction[ac.transaction_count] = balance; 
+    int offset = strlen(ac.transactions); // Current length of transactions
+    snprintf(ac.transactions + offset, sizeof(ac.transactions) - offset, "Deposited %d\n", balance);
     ac.transaction_count++;	
     lseek(fd_ac,-1*sizeof(ac),SEEK_CUR);
 	write(fd_ac,&ac,sizeof(ac));
 	lock.l_type = F_UNLCK;
 	fcntl(fd_ac,F_SETLK,&lock);
     strcpy(response,"Deposit Done\n");
-
     close(fd_ac);
+    return;
+    }
+    else{
+    strcpy(response,"User is not active\n");
+    close(fd_ac);
+    return;
+    }
 }
 
 void withdraw_money(int sd, char *uname) {
@@ -198,6 +210,7 @@ void withdraw_money(int sd, char *uname) {
         strcpy(response, "User not logged in\n");
         return;
     }
+    if(ac.active == 1){
     struct flock lock;
 	lock.l_type = F_WRLCK;
 	lock.l_whence = SEEK_SET;
@@ -216,7 +229,8 @@ void withdraw_money(int sd, char *uname) {
                 return;
             }
     ac.balance -= balance; 
-    ac.transaction[ac.transaction_count] = -1*balance; 
+    int offset = strlen(ac.transactions); // Current length of transactions
+    snprintf(ac.transactions + offset, sizeof(ac.transactions) - offset, "Withdrawed %d\n", balance);
     ac.transaction_count++;	
     lseek(fd_ac,-1*sizeof(ac),SEEK_CUR);
 	write(fd_ac,&ac,sizeof(ac));
@@ -224,6 +238,12 @@ void withdraw_money(int sd, char *uname) {
 	fcntl(fd_ac,F_SETLK,&lock);
     strcpy(response,"Withdraw Done\n");
     close(fd_ac);
+    return;
+    }else{
+    strcpy(response,"User is not active\n");
+    close(fd_ac);
+    return;
+    }
 }
 void transfer_funds(int sd, char *uname) {
     char msg[] = "Enter receiver's ID: ";
@@ -275,6 +295,10 @@ void transfer_funds(int sd, char *uname) {
         if (receiver_ac.id == rid) {
             printf("Receiver found: ID %d\n", rid);
             receiver_found = 1;
+            if(receiver_ac.active == 0){
+                strcpy(response,"Receiver is not active\n");
+                return;
+            }
             break;
         }
     }
@@ -295,6 +319,9 @@ void transfer_funds(int sd, char *uname) {
 	lseek(fd,(cid-1)*sizeof(sender_ac),SEEK_SET);
 	read(fd,&sender_ac,sizeof(sender_ac));
     sender_ac.balance -= amt;  
+    int offset = strlen(sender_ac.transactions); 
+    snprintf(sender_ac.transactions + offset, sizeof(sender_ac.transactions) - offset, "Sent %d to %d\n", amt,rid);
+    sender_ac.transaction_count++;
     lseek(fd, -sizeof(sender_ac), SEEK_CUR);  
     write(fd, &sender_ac, sizeof(sender_ac));  
     lock.l_type = F_UNLCK;
@@ -310,6 +337,9 @@ void transfer_funds(int sd, char *uname) {
 	lseek(fd,(rid-1)*sizeof(receiver_ac),SEEK_SET);
 	read(fd,&receiver_ac,sizeof(receiver_ac));
     receiver_ac.balance += amt;  
+    offset = strlen(receiver_ac.transactions); 
+    snprintf(receiver_ac.transactions + offset, sizeof(receiver_ac.transactions) - offset, "Received %d from %d\n",amt,cid);
+    receiver_ac.transaction_count++;
     lseek(fd, -sizeof(receiver_ac), SEEK_CUR);  
     write(fd, &receiver_ac, sizeof(receiver_ac));  
     lock.l_type = F_UNLCK;
@@ -317,31 +347,30 @@ void transfer_funds(int sd, char *uname) {
     strcpy(response,"Transfer successful\n");
     
     close(fd);
+    return;
 }
 
 
 void view_history(int sd,char *uname){
+    strcpy(response,"\n");
     int fd_ac = open("account.txt", O_RDONLY,0744);
     int i = read(fd_ac, &ac, sizeof(ac));
     printf("Uname %s\n",uname);
+    lseek(fd_ac, 0, SEEK_SET);
+    i = read(fd_ac, &ac, sizeof(ac));
     while (i > 0) {
-        printf("\nID: %d, Username: %s\n", ac.id,ac.username);
-        if (strcmp(ac.username, uname) == 0) {
-                char hist[1024] = "";
-                char str[12];
-                for(int i = 0;i<ac.transaction_count;i++){
-                    sprintf(str, "%.2f", ac.transaction[i]); 
-                    strcat(hist, str); 
-                    strcat(hist," ");
-                }
-                send(sd, hist, strlen(hist) + 1, 0);
-                return;
-            } 
-            i = read(fd_ac, &ac, sizeof(ac));     
-    }   
+        printf("\nID: %d, Username: %s, Balance: %d, Loan: %d, Transaction Count: %d, EID: %d, EUsername: %s, Status: %s, Active: %d\n", 
+               ac.id, ac.username, ac.balance, ac.loan, ac.transaction_count, ac.eid, ac.eusername, ac.status, ac.active);
+        if(strcmp(ac.username,uname) == 0){
+        strcpy(response,ac.transactions); 
+        return;
+        }
+        i = read(fd_ac, &ac, sizeof(ac));
+    }
     strcpy(response, "user not logged in\n");
 
     close(fd_ac);
+    return;
 }
 int change_password(int sd,char *uname){
     char new_pass[1024];

@@ -15,7 +15,6 @@ void activate_account(int sd){
     int fd_c = open("customer.txt", O_RDWR, 0744);
     int fd_a = open("account.txt", O_RDWR, 0744);
 
-        // Find customer in customer.txt
     int i = read(fd_c, &c, sizeof(c));
     while (i > 0) {
         if (strcmp(c.username, uname) == 0) {

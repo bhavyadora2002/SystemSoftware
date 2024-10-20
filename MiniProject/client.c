@@ -6,10 +6,8 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-// #include "clientFunc.h"
 
-
-#define PORT 5057
+#define PORT 5053
 struct{
         int id;
         char username[15];

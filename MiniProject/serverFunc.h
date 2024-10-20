@@ -73,32 +73,53 @@ void read_users_from_file() {
 }
 void view_balance(char *uname){
     
-    int fd_ac = open("account.txt", O_RDONLY,0744);
-    lseek(fd_ac,0,SEEK_SET);
-    int i = read(fd_ac, &ac, sizeof(ac));
-    printf("Uname %s\n",uname);
-    while (i > 0) {
-        printf("\nID: %d, Username: %s\n", ac.id,ac.username);
-        if (strcmp(ac.username, uname) == 0) {
-                char str[15];
-                sprintf(str, "%d", ac.balance);
-                sprintf(response, "Balance is  %s\n",str);
-                return;
-            } 
-            i = read(fd_ac, &ac, sizeof(ac));     
-    }   
-    strcpy(response, "user not logged in\n");
+    int fd_ac = open("account.txt", O_RDONLY, 0744);
+    if (fd_ac == -1) {
+        perror("ERROR Opening File");
+        return;
+    }
+    int cid;
 
+    lseek(fd_ac, 0, SEEK_SET); 
+    int i = read(fd_ac, &ac, sizeof(ac));
+    printf("Uname %s\n", uname);
+
+    while (i > 0) {
+        if (strcmp(ac.username, uname) == 0) {
+            cid = ac.id;
+            break;
+        }
+        i = read(fd_ac, &ac, sizeof(ac));
+    }
+    if (i <= 0) {
+        strcpy(response, "User not logged in\n");
+        return;
+    }
+    struct flock lock;
+	lock.l_type = F_RDLCK;
+	lock.l_whence = SEEK_SET;
+	lock.l_start = (cid-1)*sizeof(ac);
+	lock.l_len = sizeof(ac);
+	lock.l_pid = getpid();
+    fcntl(fd_ac,F_SETLKW,&lock);
+	lseek(fd_ac,(cid-1)*sizeof(ac),SEEK_SET);
+	read(fd_ac,&ac,sizeof(ac));
+    char str[15];
+    sprintf(str, "%d", ac.balance);
+    sprintf(response, "Balance is  %s\n",str);
+    lseek(fd_ac,-1*sizeof(ac),SEEK_CUR);
+	write(fd_ac,&ac,sizeof(ac));
+	lock.l_type = F_UNLCK;
+	fcntl(fd_ac,F_SETLK,&lock);
     close(fd_ac);
+    return;
    
 }
 
 void deposit_money(int sd, char *uname) {
-    struct flock lock;
     char msg[] = "Enter amount to deposit: ";
     char bal[1024];
 
-    // Notify the user to enter the amount to deposit
     write(sd, msg, sizeof(msg));
     read(sd, bal, sizeof(bal));
     int balance = atoi(bal);
@@ -108,13 +129,7 @@ void deposit_money(int sd, char *uname) {
         perror("ERROR Opening File");
         return;
     }
-
-    // Lock the file for writing
-    lock.l_type = F_WRLCK;
-    lock.l_whence = SEEK_SET;
-    lock.l_start = 0; // Lock the whole file
-    lock.l_len = 0;   // 0 means to the end of the file
-    fcntl(fd_ac, F_SETLKW, &lock); // Apply the lock
+    int cid;
 
     lseek(fd_ac, 0, SEEK_SET); // Reset the pointer to the beginning
     int i = read(fd_ac, &ac, sizeof(ac));
@@ -122,34 +137,41 @@ void deposit_money(int sd, char *uname) {
 
     while (i > 0) {
         if (strcmp(ac.username, uname) == 0) {
-            ac.balance += balance; // Update the balance
-            ac.transaction[ac.transaction_count] = balance; // Record the transaction
-            ac.transaction_count++;
-
-            lseek(fd_ac, -sizeof(ac), SEEK_CUR); // Move back to update
-            write(fd_ac, &ac, sizeof(ac)); // Write back to file
-            strcpy(response, "Deposit Done");
+            cid = ac.id;
             break;
         }
         i = read(fd_ac, &ac, sizeof(ac));
     }
-
     if (i <= 0) {
         strcpy(response, "User not logged in\n");
+        return;
     }
+    struct flock lock;
+	lock.l_type = F_WRLCK;
+	lock.l_whence = SEEK_SET;
+	lock.l_start = (cid-1)*sizeof(ac);
+	lock.l_len = sizeof(ac);
+	lock.l_pid = getpid();
+    fcntl(fd_ac,F_SETLKW,&lock);
+	lseek(fd_ac,(cid-1)*sizeof(ac),SEEK_SET);
+	read(fd_ac,&ac,sizeof(ac));
+    ac.balance += balance; 
+    ac.transaction[ac.transaction_count] = balance; 
+    ac.transaction_count++;	
+    lseek(fd_ac,-1*sizeof(ac),SEEK_CUR);
+	write(fd_ac,&ac,sizeof(ac));
+	lock.l_type = F_UNLCK;
+	fcntl(fd_ac,F_SETLK,&lock);
+    strcpy(response,"Deposit Done\n");
 
-    // Unlock the file
-    lock.l_type = F_UNLCK; // Set lock type to unlock
-    fcntl(fd_ac, F_SETLK, &lock); // Release the lock
     close(fd_ac);
 }
 
 void withdraw_money(int sd, char *uname) {
-    struct flock lock;
+    
     char msg[] = "Enter amount to withdraw: ";
     char bal[1024];
 
-    // Notify the user to enter the amount to withdraw
     write(sd, msg, sizeof(msg));
     read(sd, bal, sizeof(bal));
     int balance = atoi(bal);
@@ -159,57 +181,55 @@ void withdraw_money(int sd, char *uname) {
         perror("ERROR Opening File");
         return;
     }
+    int cid;
 
-    // Lock the file for writing
-    lock.l_type = F_WRLCK;
-    lock.l_whence = SEEK_SET;
-    lock.l_start = 0; // Lock the whole file
-    lock.l_len = 0;   // 0 means to the end of the file
-    fcntl(fd_ac, F_SETLKW, &lock); // Apply the lock
-
-    lseek(fd_ac, 0, SEEK_SET); // Reset the pointer to the beginning
+    lseek(fd_ac, 0, SEEK_SET); 
     int i = read(fd_ac, &ac, sizeof(ac));
     printf("Uname %s\n", uname);
 
     while (i > 0) {
         if (strcmp(ac.username, uname) == 0) {
-            if (balance > ac.balance) {
-                strcpy(response, "Insufficient Balance");
-                break;
-            }
-            if (balance <= 0) {
-                strcpy(response, "ERROR: Amount should be greater than zero");
-                break;
-            }
-
-            ac.balance -= balance; // Update the balance
-            ac.transaction[ac.transaction_count] = -1 * balance; // Record withdrawal
-            ac.transaction_count++;
-
-            lseek(fd_ac, -sizeof(ac), SEEK_CUR); // Move back to update
-            write(fd_ac, &ac, sizeof(ac)); // Write back to file
-            strcpy(response, "Withdraw Done");
+            cid = ac.id;
             break;
         }
         i = read(fd_ac, &ac, sizeof(ac));
     }
-
     if (i <= 0) {
         strcpy(response, "User not logged in\n");
+        return;
     }
-
-    // Unlock the file
-    lock.l_type = F_UNLCK; // Set lock type to unlock
-    fcntl(fd_ac, F_SETLK, &lock); // Release the lock
+    struct flock lock;
+	lock.l_type = F_WRLCK;
+	lock.l_whence = SEEK_SET;
+	lock.l_start = (cid-1)*sizeof(ac);
+	lock.l_len = sizeof(ac);
+	lock.l_pid = getpid();
+    fcntl(fd_ac,F_SETLKW,&lock);
+	lseek(fd_ac,(cid-1)*sizeof(ac),SEEK_SET);
+	read(fd_ac,&ac,sizeof(ac));
+    if (balance > ac.balance) {
+                strcpy(response, "Insufficient Balance");
+                return;
+            }
+            if (balance <= 0) {
+                strcpy(response, "ERROR: Amount should be greater than zero");
+                return;
+            }
+    ac.balance -= balance; 
+    ac.transaction[ac.transaction_count] = -1*balance; 
+    ac.transaction_count++;	
+    lseek(fd_ac,-1*sizeof(ac),SEEK_CUR);
+	write(fd_ac,&ac,sizeof(ac));
+	lock.l_type = F_UNLCK;
+	fcntl(fd_ac,F_SETLK,&lock);
+    strcpy(response,"Withdraw Done\n");
     close(fd_ac);
 }
 void transfer_funds(int sd, char *uname) {
-    struct flock lock;
     char msg[] = "Enter receiver's ID: ";
     char recid[1024];
     char transfer[1024];
 
-    // Notify the user to enter the receiver's ID
     write(sd, msg, sizeof(msg));
     read(sd, recid, sizeof(recid));
     printf("Receiver ID Received: %s\n", recid);
@@ -227,48 +247,33 @@ void transfer_funds(int sd, char *uname) {
         return;
     }
 
-    // Lock the file for writing
-    lock.l_type = F_WRLCK;
-    lock.l_whence = SEEK_SET;
-    lock.l_start = 0; // Lock the whole file
-    lock.l_len = 0;   // 0 means to the end of the file
-    fcntl(fd, F_SETLKW, &lock); // Apply the lock
-
     int sender_found = 0, receiver_found = 0;
-    off_t receiver_pos = 0; // Position to store where the receiver record is
-
-    // First, find the sender's account
+    int cid;
     lseek(fd, 0, SEEK_SET);
     while (read(fd, &sender_ac, sizeof(sender_ac)) > 0) {
         if (strcmp(sender_ac.username, uname) == 0) {
+            cid = sender_ac.id;
             printf("Sender found: %s\n", uname);
+            if (sender_ac.balance < amt) {
+                strcpy(response, "Insufficient balance\n");
+                close(fd);
+                return;
+            }
             sender_found = 1;
             break;
         }
     }
 
-    if (!sender_found) {
-        strcpy(response, "Sender account not found\n");
-        write(sd, response, strlen(response) + 1);
-        fcntl(fd, F_UNLCK, &lock); // Release the lock
-        close(fd);
-        return;
-    }
-
-    if (sender_ac.id == rid) {
+    if (cid == rid) {
         strcpy(response, "Self-transfer is not allowed\n");
-        write(sd, response, strlen(response) + 1);
-        fcntl(fd, F_UNLCK, &lock); // Release the lock
         close(fd);
         return;
     }
 
-    // Now find the receiver's account
     lseek(fd, 0, SEEK_SET);  
     while (read(fd, &receiver_ac, sizeof(receiver_ac)) > 0) {
         if (receiver_ac.id == rid) {
             printf("Receiver found: ID %d\n", rid);
-            receiver_pos = lseek(fd, 0, SEEK_CUR) - sizeof(receiver_ac);  
             receiver_found = 1;
             break;
         }
@@ -276,36 +281,41 @@ void transfer_funds(int sd, char *uname) {
 
     if (!receiver_found) {
         strcpy(response, "Receiver account not found\n");
-        write(sd, response, strlen(response) + 1);
-        fcntl(fd, F_UNLCK, &lock); // Release the lock
         close(fd);
         return;
     }
 
-    if (sender_ac.balance < amt) {
-        strcpy(response, "Insufficient balance\n");
-        write(sd, response, strlen(response) + 1);
-        fcntl(fd, F_UNLCK, &lock); // Release the lock
-        close(fd);
-        return;
-    }
+    struct flock lock;
+	lock.l_type = F_WRLCK;
+	lock.l_whence = SEEK_SET;
+	lock.l_start = (cid-1)*sizeof(sender_ac);
+	lock.l_len = sizeof(sender_ac);
+	lock.l_pid = getpid();
+    fcntl(fd,F_SETLKW,&lock);
+	lseek(fd,(cid-1)*sizeof(sender_ac),SEEK_SET);
+	read(fd,&sender_ac,sizeof(sender_ac));
+    sender_ac.balance -= amt;  
+    lseek(fd, -sizeof(sender_ac), SEEK_CUR);  
+    write(fd, &sender_ac, sizeof(sender_ac));  
+    lock.l_type = F_UNLCK;
+	fcntl(fd,F_SETLK,&lock);
+    printf("Sent success\n");
 
-    // Perform the transfer: deduct from sender and add to receiver
-    sender_ac.balance -= amt;  // Update sender's balance
-    lseek(fd, -sizeof(sender_ac), SEEK_CUR);  // Move back to the sender's record
-    write(fd, &sender_ac, sizeof(sender_ac));  // Write back updated sender balance
-
-    lseek(fd, receiver_pos, SEEK_SET);  // Move to the receiver's position
-    receiver_ac.balance += amt;  // Update receiver's balance
-    write(fd, &receiver_ac, sizeof(receiver_ac));  // Write back updated receiver balance
-
-    // Send success message
-    strcpy(response, "Transfer successful\n");
-    write(sd, response, strlen(response) + 1);
-
-    // Unlock the file
-    lock.l_type = F_UNLCK; // Set lock type to unlock
-    fcntl(fd, F_SETLK, &lock); // Release the lock
+    lock.l_type = F_WRLCK;
+	lock.l_whence = SEEK_SET;
+	lock.l_start = (rid-1)*sizeof(receiver_ac);
+	lock.l_len = sizeof(receiver_ac);
+	lock.l_pid = getpid();
+    fcntl(fd,F_SETLKW,&lock);
+	lseek(fd,(rid-1)*sizeof(receiver_ac),SEEK_SET);
+	read(fd,&receiver_ac,sizeof(receiver_ac));
+    receiver_ac.balance += amt;  
+    lseek(fd, -sizeof(receiver_ac), SEEK_CUR);  
+    write(fd, &receiver_ac, sizeof(receiver_ac));  
+    lock.l_type = F_UNLCK;
+	fcntl(fd,F_SETLK,&lock);
+    strcpy(response,"Transfer successful\n");
+    
     close(fd);
 }
 

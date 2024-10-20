@@ -12,7 +12,7 @@
 #include "managerFunc.h"
 #include "employeeFunc.h"
 
-#define PORT 5057
+#define PORT 5053
 
 
 void* handler(void* arg) {
